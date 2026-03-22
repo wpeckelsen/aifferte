@@ -1,0 +1,71 @@
+App's purpose
+Aifferte automates repetitive inbound email responses for SMEs, specifically price inquiries and policy-related questions.
+
+The system reads incoming emails, determines relevance (only price and policy are), and—if applicable—generates a reply using the company’s internal knowledge base. User can login, connect inbox and upload knowledge base.
+
+High level flow
+1. Poll inbox (Gmail / Outlook)
+2. Receive new email
+3. Classify email (AI.classify)
+   → If NOT relevant → stop, if relevant > continue
+4. Retrieve knowledge base (Supabase)
+5. Generate reply (AI.generator)
+6. Save + create draft in inbox
+
+
+Layers
+
+1. Orchestrator (core logic)
+- Entry point for processing emails
+- Handles flow control
+- Prevents duplicates
+- Calls services in order
+
+2. Integrations (external APIs)
+Location: src/integrations/
+
+- gmail
+- outlook
+- supabase
+- ai
+
+Responsibilities:
+- API communication only
+- No business logic
+
+3. Services (business logic)
+Location: src/services/
+
+- classify relevance
+- generate email reply
+- knowledge retrieval
+
+Responsibilities:
+- Wrap integrations
+- Add validation and rules
+- Mockable for testing
+
+4. Data Layer
+- Supabase (PostgreSQL)
+
+Stores:
+- User data
+- User login data
+- OAuth tokens
+- Knowledge base
+- Processed email IDs (deduplication)
+
+
+MVP Simplifications for this sprint
+- Polling instead of webhooks
+- Single user per workspace
+- Static knowledge base structure
+- Simple classification (no fine-tuning)
+- No frontend for now
+
+
+Dev Notes for AI Agents
+- Write this Express app in Typescript
+- Prefer simple, readable code over abstraction
+- Mock integrations before implementing real APIs
+- Use clear interfaces between layers
