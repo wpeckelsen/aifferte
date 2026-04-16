@@ -1,7 +1,10 @@
 App's purpose
 Aifferte automates repetitive inbound email responses for SMEs, specifically price inquiries and policy-related questions.
 
-The system reads incoming emails, determines relevance (only price and policy are), and—if applicable—generates a reply using the company’s internal knowledge base. User can login, connect inbox and upload knowledge base.
+The system reads incoming emails, 
+determines relevance (only price and policy are), 
+and—if applicable—generates a reply using the company’s internal knowledge base. 
+User can login, connect inbox and upload knowledge base.
 
 High level flow
 1. Poll inbox (Gmail / Outlook)

@@ -23,7 +23,7 @@ interface OrchestratorDependencies {
 }
 
 export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrchestrator {
-  constructor(private readonly deps: OrchestratorDependencies) {}
+  constructor(private readonly deps: OrchestratorDependencies) { }
 
   async processNextBatch(userContext: UserContext): Promise<ProcessResult[]> {
     const emails = await this.deps.inbox.pollNewEmails(userContext, this.deps.config.pollLimit);
@@ -39,20 +39,17 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
 
   async processSingleEmail(email: EmailMessage, userContext: UserContext): Promise<ProcessResult> {
     try {
-      await this.transitionTo(email, "received");
-      await this.transitionTo(email, "dedupe_checked");
-
       const alreadyProcessed = await this.deps.processedStore.hasProcessed(email.id);
       if (alreadyProcessed) {
-        await this.transitionTo(email, "skipped_duplicate");
-        await this.transitionTo(email, "completed");
-
         return {
           emailId: email.id,
           status: "skipped_duplicate",
           reason: "Email already processed",
         };
       }
+
+      await this.transitionTo(email, "received");
+      await this.transitionTo(email, "dedupe_checked");
 
       const classification = await this.deps.classifier.classify(email);
       await this.transitionTo(email, "classified", {
@@ -86,6 +83,12 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         chunkCount: knowledge.length,
       });
 
+      if (knowledge.length === 0) {
+        throw new Error(
+          `Cannot generate reply for email ${email.id}: no knowledge chunks provided`,
+        );
+      }
+
       const reply = await this.deps.replyGenerator.generateReply({
         email,
         classification,
@@ -110,7 +113,7 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         draftId: draft.draftId,
       };
     } catch (error) {
-      await this.safeMarkFailed(email);
+      await this.safeMarkFailed(email, this.toErrorMessage(error));
 
       return {
         emailId: email.id,
@@ -137,8 +140,12 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
     });
   }
 
-  private async safeMarkFailed(email: EmailMessage): Promise<void> {
+  private async safeMarkFailed(email: EmailMessage, reason: string): Promise<void> {
     const snapshot = await this.deps.stateTracker.getSnapshot(email.id);
+
+    if (snapshot?.state === "completed") {
+      return;
+    }
 
     if (!snapshot) {
       await this.deps.stateTracker.transition({
@@ -149,7 +156,7 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
       });
     }
 
-    await this.deps.stateTracker.markFailed(email.id, "Processing failed");
+    await this.deps.stateTracker.markFailed(email.id, reason);
   }
 
   private toErrorMessage(error: unknown): string {
