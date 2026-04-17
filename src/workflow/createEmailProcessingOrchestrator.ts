@@ -2,7 +2,10 @@ import {
   MockAiIntegration,
   MockInboxIntegration,
   MockKnowledgeBaseIntegration,
+  OpenRouterAiIntegration,
 } from "../integrations";
+import type { RuntimeConfig } from "../config";
+import { loadRuntimeConfig } from "../config";
 import {
   ClassifyService,
   KnowledgeService,
@@ -16,13 +19,17 @@ import { DefaultEmailProcessingOrchestrator } from "./emailProcessingOrchestrato
 
 interface CreateEmailProcessingOrchestratorOptions {
   pollLimit?: number;
+  runtimeConfig?: RuntimeConfig;
 }
 
 export function createEmailProcessingOrchestrator(
   options: CreateEmailProcessingOrchestratorOptions = {},
 ): DefaultEmailProcessingOrchestrator {
+  const runtimeConfig = options.runtimeConfig ?? loadRuntimeConfig();
   const inbox = new MockInboxIntegration();
-  const ai = new MockAiIntegration();
+  const ai = runtimeConfig.aiProvider === "openrouter"
+    ? new OpenRouterAiIntegration(getOpenRouterConfig(runtimeConfig))
+    : new MockAiIntegration();
   const knowledgeBase = new MockKnowledgeBaseIntegration();
 
   const classifier = new ClassifyService(ai);
@@ -43,4 +50,12 @@ export function createEmailProcessingOrchestrator(
       pollLimit: options.pollLimit ?? 10,
     },
   });
+}
+
+function getOpenRouterConfig(runtimeConfig: RuntimeConfig) {
+  if (!runtimeConfig.openRouter) {
+    throw new Error("OpenRouter config is missing while AI_PROVIDER is set to openrouter");
+  }
+
+  return runtimeConfig.openRouter;
 }

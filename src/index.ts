@@ -1,9 +1,15 @@
+import "dotenv/config";
 import express from "express";
+import { loadRuntimeConfig } from "./config";
 import { createEmailProcessingOrchestrator } from "./workflow";
 import type { EmailProvider, UserContext } from "./types";
 
+const runtimeConfig = loadRuntimeConfig();
 const app = express();
-const orchestrator = createEmailProcessingOrchestrator({ pollLimit: 10 });
+const orchestrator = createEmailProcessingOrchestrator({
+  pollLimit: 10,
+  runtimeConfig,
+});
 
 app.use(express.json());
 
@@ -35,7 +41,7 @@ app.post("/workflow/run-once", async (req, res) => {
   }
 });
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = runtimeConfig.port;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

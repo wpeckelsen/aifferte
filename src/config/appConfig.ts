@@ -1,0 +1,74 @@
+export type AiProvider = "mock" | "openrouter";
+
+export interface OpenRouterConfig {
+  apiKey: string;
+  classifyModel: string;
+  replyModel: string;
+  baseUrl: string;
+  timeoutMs: number;
+  appTitle?: string;
+  httpReferer?: string;
+}
+
+export interface RuntimeConfig {
+  port: number;
+  aiProvider: AiProvider;
+  openRouter?: OpenRouterConfig;
+}
+
+function readRequiredEnv(name: string): string {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+
+  return value;
+}
+
+function readOptionalEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
+function readNumberEnv(name: string, defaultValue: number): number {
+  const raw = process.env[name]?.trim();
+
+  if (!raw) {
+    return defaultValue;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Environment variable ${name} must be a positive number`);
+  }
+
+  return parsed;
+}
+
+export function loadRuntimeConfig(): RuntimeConfig {
+  const aiProvider = (process.env.AI_PROVIDER?.trim() || "mock") as AiProvider;
+
+  if (aiProvider !== "mock" && aiProvider !== "openrouter") {
+    throw new Error("AI_PROVIDER must be either 'mock' or 'openrouter'");
+  }
+
+  const config: RuntimeConfig = {
+    port: readNumberEnv("PORT", 3000),
+    aiProvider,
+  };
+
+  if (aiProvider === "openrouter") {
+    config.openRouter = {
+      apiKey: readRequiredEnv("OPENROUTER_API_KEY"),
+      classifyModel: readRequiredEnv("OPENROUTER_CLASSIFY_MODEL"),
+      replyModel: readRequiredEnv("OPENROUTER_REPLY_MODEL"),
+      baseUrl: readOptionalEnv("OPENROUTER_BASE_URL") ?? "https://openrouter.ai/api/v1",
+      timeoutMs: readNumberEnv("AI_TIMEOUT_MS", 15000),
+      appTitle: readOptionalEnv("OPENROUTER_APP_TITLE"),
+      httpReferer: readOptionalEnv("OPENROUTER_HTTP_REFERER"),
+    };
+  }
+
+  return config;
+}

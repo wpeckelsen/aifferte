@@ -73,11 +73,38 @@ Aifferte is built with a modern, minimal stack:
 |------|-----------|
 | Runtime | Node.js + TypeScript |
 | Framework | Express 5 |
-| AI | OpenAI (mocked in development) |
+| AI | OpenRouter API (mockable in development) |
 | Inbox | Gmail / Outlook (mocked in development) |
 | Database | Supabase (PostgreSQL) |
 
 The focus is not on complexity, but on reliability and clarity.
+
+## AI configuration
+
+The app supports two AI modes:
+
+- `mock`: uses the in-repo mock AI integration
+- `openrouter`: calls the OpenRouter chat completions API for both classification and reply drafting
+
+Copy [.env.example](.env.example) to `.env` and set these values:
+
+- `AI_PROVIDER=mock|openrouter`
+- `OPENROUTER_API_KEY`
+- `OPENROUTER_CLASSIFY_MODEL`
+- `OPENROUTER_REPLY_MODEL`
+- `AI_TIMEOUT_MS`
+
+Optional headers for OpenRouter attribution:
+
+- `OPENROUTER_HTTP_REFERER`
+- `OPENROUTER_APP_TITLE`
+
+Suggested model split:
+
+- Classification: a smaller, cheaper model with reliable JSON output
+- Reply drafting: a stronger generation model
+
+When `AI_PROVIDER=openrouter`, startup will fail fast if the required OpenRouter variables are missing.
 
 ---
 
