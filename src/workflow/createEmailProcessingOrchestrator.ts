@@ -1,15 +1,14 @@
 import {
-  MockAiIntegration,
   MockInboxIntegration,
   MockKnowledgeBaseIntegration,
   OpenRouterAiIntegration,
+  OpenRouterReplyIntegration,
 } from "../integrations";
 import type { RuntimeConfig } from "../config";
 import { loadRuntimeConfig } from "../config";
 import {
   ClassifyService,
   KnowledgeService,
-  ReplyService,
 } from "../services";
 import {
   InMemoryEmailStateTracker,
@@ -26,15 +25,14 @@ export function createEmailProcessingOrchestrator(
   options: CreateEmailProcessingOrchestratorOptions = {},
 ): DefaultEmailProcessingOrchestrator {
   const runtimeConfig = options.runtimeConfig ?? loadRuntimeConfig();
+  const openRouterConfig = runtimeConfig.openRouter;
   const inbox = new MockInboxIntegration();
-  const ai = runtimeConfig.aiProvider === "openrouter"
-    ? new OpenRouterAiIntegration(getOpenRouterConfig(runtimeConfig))
-    : new MockAiIntegration();
+  const classifierAi = new OpenRouterAiIntegration(openRouterConfig);
   const knowledgeBase = new MockKnowledgeBaseIntegration();
 
-  const classifier = new ClassifyService(ai);
+  const classifier = new ClassifyService(classifierAi);
   const knowledgeRetriever = new KnowledgeService(knowledgeBase);
-  const replyGenerator = new ReplyService(ai);
+  const replyGenerator = new OpenRouterReplyIntegration(openRouterConfig);
 
   const processedStore = new InMemoryProcessedEmailStore();
   const stateTracker = new InMemoryEmailStateTracker();
@@ -50,12 +48,4 @@ export function createEmailProcessingOrchestrator(
       pollLimit: options.pollLimit ?? 10,
     },
   });
-}
-
-function getOpenRouterConfig(runtimeConfig: RuntimeConfig) {
-  if (!runtimeConfig.openRouter) {
-    throw new Error("OpenRouter config is missing while AI_PROVIDER is set to openrouter");
-  }
-
-  return runtimeConfig.openRouter;
 }

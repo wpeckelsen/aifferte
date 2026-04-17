@@ -1,4 +1,4 @@
-export type AiProvider = "mock" | "openrouter";
+export type AiProvider = "openrouter";
 
 export interface OpenRouterConfig {
   apiKey: string;
@@ -13,7 +13,7 @@ export interface OpenRouterConfig {
 export interface RuntimeConfig {
   port: number;
   aiProvider: AiProvider;
-  openRouter?: OpenRouterConfig;
+  openRouter: OpenRouterConfig;
 }
 
 function readRequiredEnv(name: string): string {
@@ -47,19 +47,16 @@ function readNumberEnv(name: string, defaultValue: number): number {
 }
 
 export function loadRuntimeConfig(): RuntimeConfig {
-  const aiProvider = (process.env.AI_PROVIDER?.trim() || "mock") as AiProvider;
+  const aiProvider = process.env.AI_PROVIDER?.trim() || "openrouter";
 
-  if (aiProvider !== "mock" && aiProvider !== "openrouter") {
-    throw new Error("AI_PROVIDER must be either 'mock' or 'openrouter'");
+  if (aiProvider !== "openrouter") {
+    throw new Error("AI_PROVIDER must be 'openrouter'");
   }
 
   const config: RuntimeConfig = {
     port: readNumberEnv("PORT", 3000),
-    aiProvider,
-  };
-
-  if (aiProvider === "openrouter") {
-    config.openRouter = {
+    aiProvider: "openrouter",
+    openRouter: {
       apiKey: readRequiredEnv("OPENROUTER_API_KEY"),
       classifyModel: readRequiredEnv("OPENROUTER_CLASSIFY_MODEL"),
       replyModel: readRequiredEnv("OPENROUTER_REPLY_MODEL"),
@@ -67,8 +64,8 @@ export function loadRuntimeConfig(): RuntimeConfig {
       timeoutMs: readNumberEnv("AI_TIMEOUT_MS", 15000),
       appTitle: readOptionalEnv("OPENROUTER_APP_TITLE"),
       httpReferer: readOptionalEnv("OPENROUTER_HTTP_REFERER"),
-    };
-  }
+    },
+  };
 
   return config;
 }

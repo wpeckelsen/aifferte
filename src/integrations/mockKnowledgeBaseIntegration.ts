@@ -50,15 +50,70 @@ export class MockKnowledgeBaseIntegration implements KnowledgeBaseIntegration {
     }
 
     if (input.query) {
-      const query = input.query.toLowerCase();
-      result = result.filter(
-        (chunk) =>
-          chunk.title.toLowerCase().includes(query) ||
-          chunk.content.toLowerCase().includes(query) ||
-          chunk.tags.some((tag) => tag.toLowerCase().includes(query)),
-      );
+      const tokens = tokenizeQuery(input.query);
+
+      if (tokens.length > 0) {
+        const scored = result
+          .map((chunk) => ({
+            chunk,
+            score: countMatches(chunk, tokens),
+          }))
+          .filter((item) => item.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .map((item) => item.chunk);
+
+        // Keep behavior forgiving: if nothing matches query tokens, return topic-matched chunks.
+        if (scored.length > 0) {
+          result = scored;
+        }
+      }
     }
 
     return result.slice(0, input.limit ?? 5);
   }
+}
+
+function tokenizeQuery(query: string): string[] {
+  const stopWords = new Set([
+    "a",
+    "an",
+    "and",
+    "are",
+    "can",
+    "for",
+    "get",
+    "how",
+    "i",
+    "is",
+    "it",
+    "my",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "we",
+    "what",
+    "your",
+  ]);
+
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3)
+    .filter((token) => !stopWords.has(token));
+}
+
+function countMatches(chunk: KnowledgeChunk, tokens: string[]): number {
+  const haystack = `${chunk.title} ${chunk.content} ${chunk.tags.join(" ")}`.toLowerCase();
+  let score = 0;
+
+  for (const token of tokens) {
+    if (haystack.includes(token)) {
+      score += 1;
+    }
+  }
+
+  return score;
 }

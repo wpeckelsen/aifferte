@@ -47,6 +47,7 @@ export interface ProcessResult {
   status: ProcessingStatus;
   reason?: string;
   draftId?: string;
+  draft?: GeneratedReply;
 }
 
 export interface UserContext {

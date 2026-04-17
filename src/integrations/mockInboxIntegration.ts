@@ -8,8 +8,8 @@ import type {
 export class MockInboxIntegration implements InboxIntegration {
   private readonly emails: EmailMessage[] = [
     {
-      id: "email-1",
-      threadId: "thread-1",
+      id: "email-11111",
+      threadId: "thread-1111",
       subject: "Can I get pricing for 20 seats?",
       from: "alice@acme.com",
       to: ["support@aifferte.com"],
@@ -28,8 +28,8 @@ export class MockInboxIntegration implements InboxIntegration {
       provider: "outlook",
     },
     {
-      id: "email-3",
-      threadId: "thread-3",
+      id: "email-33333",
+      threadId: "thread-3333",
       subject: "Your subscription is ending soon",
       from: "noreply@examplecomp.com",
       to: ["support@aifferte.com"],

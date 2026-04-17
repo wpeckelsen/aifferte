@@ -111,6 +111,7 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         emailId: email.id,
         status: "drafted",
         draftId: draft.draftId,
+        draft: reply,
       };
     } catch (error) {
       await this.safeMarkFailed(email, this.toErrorMessage(error));

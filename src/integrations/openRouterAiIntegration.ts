@@ -106,49 +106,78 @@ export class OpenRouterAiIntegration implements AiIntegration {
   constructor(private readonly config: OpenRouterConfig) {}
 
   async classifyEmail(email: EmailMessage): Promise<ClassificationResult> {
-    const payload = await this.sendStructuredRequest<ClassificationPayload>({
+    const startedAt = Date.now();
+    console.info("[ai.classify.request]", {
+      provider: "openrouter",
+      emailId: email.id,
       model: this.config.classifyModel,
-      temperature: 0,
-      max_tokens: 250,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "email_relevance_classification",
-          strict: true,
-          schema: classificationSchema,
-        },
-      },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You classify inbound support emails for a small business. Only price inquiries and policy questions are relevant. Return JSON only.",
-        },
-        {
-          role: "user",
-          content: [
-            "Classify this email.",
-            "Relevant topics:",
-            "- price: pricing, quote, cost, seats, billing questions",
-            "- policy: refund, return, cancellation, cancellation terms, policy questions",
-            "- other: everything else",
-            "Rules:",
-            "- label must be relevant only for price or policy",
-            "- topic must be other when label is not_relevant",
-            "- confidence must be between 0 and 1",
-            `Subject: ${email.subject || "(empty)"}`,
-            `Body: ${email.bodyText || "(empty)"}`,
-          ].join("\n"),
-        },
-      ],
+      subjectPreview: truncate(email.subject || "(empty)", 80),
     });
 
-    return {
-      label: payload.label,
-      topic: payload.label === "not_relevant" ? "other" : payload.topic,
-      confidence: clampConfidence(payload.confidence),
-      reasoning: payload.reasoning,
-    };
+    try {
+      const payload = await this.sendStructuredRequest<ClassificationPayload>({
+        model: this.config.classifyModel,
+        temperature: 0,
+        max_tokens: 250,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "email_relevance_classification",
+            strict: true,
+            schema: classificationSchema,
+          },
+        },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You classify inbound support emails for a small business. Only price inquiries and policy questions are relevant. Return JSON only.",
+          },
+          {
+            role: "user",
+            content: [
+              "Classify this email.",
+              "Relevant topics:",
+              "- price: pricing, quote, cost, seats, billing questions",
+              "- policy: refund, return, cancellation, cancellation terms, policy questions",
+              "- other: everything else",
+              "Rules:",
+              "- label must be relevant only for price or policy",
+              "- topic must be other when label is not_relevant",
+              "- confidence must be between 0 and 1",
+              `Subject: ${email.subject || "(empty)"}`,
+              `Body: ${email.bodyText || "(empty)"}`,
+            ].join("\n"),
+          },
+        ],
+      });
+
+      const result: ClassificationResult = {
+        label: payload.label,
+        topic: payload.label === "not_relevant" ? "other" : payload.topic,
+        confidence: clampConfidence(payload.confidence),
+        reasoning: payload.reasoning,
+      };
+
+      console.info("[ai.classify.response]", {
+        provider: "openrouter",
+        emailId: email.id,
+        label: result.label,
+        topic: result.topic,
+        confidence: result.confidence,
+        durationMs: Date.now() - startedAt,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("[ai.classify.error]", {
+        provider: "openrouter",
+        emailId: email.id,
+        durationMs: Date.now() - startedAt,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      throw error;
+    }
   }
 
   async generateEmailReply(input: {
@@ -156,6 +185,15 @@ export class OpenRouterAiIntegration implements AiIntegration {
     classification: ClassificationResult;
     knowledge: KnowledgeChunk[];
   }): Promise<GeneratedReply> {
+    const startedAt = Date.now();
+    console.info("[ai.reply.request]", {
+      provider: "openrouter",
+      emailId: input.email.id,
+      model: this.config.replyModel,
+      topic: input.classification.topic,
+      knowledgeCount: input.knowledge.length,
+    });
+
     const knowledgeText = input.knowledge
       .map((chunk, index) => {
         const source = chunk.source ? ` [source: ${chunk.source}]` : "";
@@ -163,43 +201,68 @@ export class OpenRouterAiIntegration implements AiIntegration {
       })
       .join("\n\n");
 
-    const payload = await this.sendStructuredRequest<ReplyPayload>({
-      model: this.config.replyModel,
-      temperature: 0.2,
-      max_tokens: 500,
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "draft_reply",
-          strict: true,
-          schema: replySchema,
+    try {
+      const payload = await this.sendStructuredRequest<ReplyPayload>({
+        model: this.config.replyModel,
+        temperature: 0.2,
+        max_tokens: 500,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "draft_reply",
+            strict: true,
+            schema: replySchema,
+          },
         },
-      },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You draft concise, professional email replies for a small business support inbox. Use only the provided knowledge. Do not invent policies, prices, or terms. Return JSON only.",
-        },
-        {
-          role: "user",
-          content: [
-            `Customer subject: ${input.email.subject || "(empty)"}`,
-            `Customer message: ${input.email.bodyText || "(empty)"}`,
-            `Detected topic: ${input.classification.topic}`,
-            "Knowledge base context:",
-            knowledgeText || "No knowledge provided.",
-            "Draft a reply email with a helpful tone. Keep it specific to the supplied knowledge and end with the company signature name Aifferte.",
-          ].join("\n\n"),
-        },
-      ],
-    });
+        messages: [
+          {
+            role: "system",
+            content:
+              "You draft concise, professional email replies for a small business support inbox. Use only the provided knowledge. Do not invent policies, prices, or terms. Return JSON only.",
+          },
+          {
+            role: "user",
+            content: [
+              `Customer subject: ${input.email.subject || "(empty)"}`,
+              `Customer message: ${input.email.bodyText || "(empty)"}`,
+              `Detected topic: ${input.classification.topic}`,
+              "Knowledge base context:",
+              knowledgeText || "No knowledge provided.",
+              "Draft a reply email with a helpful tone. Keep it specific to the supplied knowledge and end with the company signature name Aifferte.",
+            ].join("\n\n"),
+          },
+        ],
+      });
 
-    return {
-      subject: payload.subject,
-      bodyText: payload.bodyText,
-      confidence: payload.confidence === undefined ? undefined : clampConfidence(payload.confidence),
-    };
+      const reply: GeneratedReply = {
+        subject: payload.subject,
+        bodyText: payload.bodyText,
+        confidence: payload.confidence === undefined ? undefined : clampConfidence(payload.confidence),
+      };
+
+      console.info("[ai.reply.response]", {
+        provider: "openrouter",
+        emailId: input.email.id,
+        confidence: reply.confidence,
+        subjectPreview: truncate(reply.subject, 80),
+        draft: {
+          subject: reply.subject,
+          bodyText: reply.bodyText,
+          confidence: reply.confidence,
+        },
+        durationMs: Date.now() - startedAt,
+      });
+
+      return reply;
+    } catch (error) {
+      console.error("[ai.reply.error]", {
+        provider: "openrouter",
+        emailId: input.email.id,
+        durationMs: Date.now() - startedAt,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      throw error;
+    }
   }
 
   private async sendStructuredRequest<T>(body: OpenRouterRequestBody): Promise<T> {
@@ -282,4 +345,12 @@ function clampConfidence(value: number): number {
   }
 
   return value;
+}
+
+function truncate(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 3)}...`;
 }
