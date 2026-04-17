@@ -30,11 +30,11 @@ export class MockInboxIntegration implements InboxIntegration {
     {
       id: "email-3",
       threadId: "thread-3",
-      subject: "Nice website",
-      from: "fan@example.com",
+      subject: "Your subscription is ending soon",
+      from: "noreply@examplecomp.com",
       to: ["support@aifferte.com"],
       receivedAt: new Date().toISOString(),
-      bodyText: "No question, just saying hello.",
+      bodyText: "Dear xyz, your subscription is ending soon. Please renew to continue enjoying our service.",
       provider: "gmail",
     },
   ];
