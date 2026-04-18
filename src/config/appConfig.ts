@@ -10,10 +10,16 @@ export interface OpenRouterConfig {
   httpReferer?: string;
 }
 
+export interface SupabaseConfig {
+  url: string;
+  serviceKey: string;
+}
+
 export interface RuntimeConfig {
   port: number;
   aiProvider: AiProvider;
   openRouter: OpenRouterConfig;
+  supabase: SupabaseConfig;
 }
 
 function readRequiredEnv(name: string): string {
@@ -64,6 +70,10 @@ export function loadRuntimeConfig(): RuntimeConfig {
       timeoutMs: readNumberEnv("AI_TIMEOUT_MS", 15000),
       appTitle: readOptionalEnv("OPENROUTER_APP_TITLE"),
       httpReferer: readOptionalEnv("OPENROUTER_HTTP_REFERER"),
+    },
+    supabase: {
+      url: readRequiredEnv("SUPABASE_URL"),
+      serviceKey: readRequiredEnv("SUPABASE_SECRET_KEY"),
     },
   };
 

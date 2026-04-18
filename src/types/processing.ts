@@ -31,6 +31,7 @@ export interface EmailProcessingEvent {
 
 export interface TransitionRequest {
   emailId: string;
+  workspaceId: string;
   from: EmailProcessingState | "none";
   to: EmailProcessingState;
   provider?: EmailProvider;

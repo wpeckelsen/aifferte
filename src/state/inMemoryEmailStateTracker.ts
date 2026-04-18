@@ -24,12 +24,12 @@ export class InMemoryEmailStateTracker implements EmailStateTracker {
   private readonly snapshots = new Map<string, EmailProcessingSnapshot>();
   private readonly events = new Map<string, EmailProcessingEvent[]>();
 
-  async getSnapshot(emailId: string): Promise<EmailProcessingSnapshot | null> {
+  async getSnapshot(emailId: string, _workspaceId: string): Promise<EmailProcessingSnapshot | null> {
     const snapshot = this.snapshots.get(emailId);
     return snapshot ? { ...snapshot } : null;
   }
 
-  async getEvents(emailId: string): Promise<EmailProcessingEvent[]> {
+  async getEvents(emailId: string, _workspaceId: string): Promise<EmailProcessingEvent[]> {
     return [...(this.events.get(emailId) ?? [])];
   }
 
@@ -77,12 +77,13 @@ export class InMemoryEmailStateTracker implements EmailStateTracker {
     return { ...snapshot };
   }
 
-  async markFailed(emailId: string, error: string): Promise<EmailProcessingSnapshot> {
+  async markFailed(emailId: string, workspaceId: string, error: string): Promise<EmailProcessingSnapshot> {
     const current = this.snapshots.get(emailId);
     const from = current?.state ?? "none";
 
     return this.transition({
       emailId,
+      workspaceId,
       from,
       to: "failed",
       provider: current?.provider,

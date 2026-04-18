@@ -1,0 +1,52 @@
+[
+  {
+    "tablename": "email_processing_events",
+    "indexname": "email_processing_events_email_idx",
+    "indexdef": "CREATE INDEX email_processing_events_email_idx ON public.email_processing_events USING btree (email_id)"
+  },
+  {
+    "tablename": "email_processing_events",
+    "indexname": "email_processing_events_pkey",
+    "indexdef": "CREATE UNIQUE INDEX email_processing_events_pkey ON public.email_processing_events USING btree (id)"
+  },
+  {
+    "tablename": "email_processing_events",
+    "indexname": "email_processing_events_workspace_idx",
+    "indexdef": "CREATE INDEX email_processing_events_workspace_idx ON public.email_processing_events USING btree (workspace_id)"
+  },
+  {
+    "tablename": "email_processing_snapshots",
+    "indexname": "email_processing_snapshots_pkey",
+    "indexdef": "CREATE UNIQUE INDEX email_processing_snapshots_pkey ON public.email_processing_snapshots USING btree (email_id, workspace_id)"
+  },
+  {
+    "tablename": "email_processing_snapshots",
+    "indexname": "email_processing_snapshots_workspace_idx",
+    "indexdef": "CREATE INDEX email_processing_snapshots_workspace_idx ON public.email_processing_snapshots USING btree (workspace_id)"
+  },
+  {
+    "tablename": "knowledge_chunks",
+    "indexname": "knowledge_chunks_pkey",
+    "indexdef": "CREATE UNIQUE INDEX knowledge_chunks_pkey ON public.knowledge_chunks USING btree (id, workspace_id)"
+  },
+  {
+    "tablename": "knowledge_chunks",
+    "indexname": "knowledge_chunks_tags_idx",
+    "indexdef": "CREATE INDEX knowledge_chunks_tags_idx ON public.knowledge_chunks USING gin (tags)"
+  },
+  {
+    "tablename": "knowledge_chunks",
+    "indexname": "knowledge_chunks_workspace_idx",
+    "indexdef": "CREATE INDEX knowledge_chunks_workspace_idx ON public.knowledge_chunks USING btree (workspace_id)"
+  },
+  {
+    "tablename": "processed_emails",
+    "indexname": "processed_emails_pkey",
+    "indexdef": "CREATE UNIQUE INDEX processed_emails_pkey ON public.processed_emails USING btree (email_id, workspace_id)"
+  },
+  {
+    "tablename": "processed_emails",
+    "indexname": "processed_emails_workspace_idx",
+    "indexdef": "CREATE INDEX processed_emails_workspace_idx ON public.processed_emails USING btree (workspace_id)"
+  }
+]

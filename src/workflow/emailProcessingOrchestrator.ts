@@ -39,7 +39,7 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
 
   async processSingleEmail(email: EmailMessage, userContext: UserContext): Promise<ProcessResult> {
     try {
-      const alreadyProcessed = await this.deps.processedStore.hasProcessed(email.id);
+      const alreadyProcessed = await this.deps.processedStore.hasProcessed(email.id, userContext.workspaceId);
       if (alreadyProcessed) {
         return {
           emailId: email.id,
@@ -48,24 +48,24 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         };
       }
 
-      await this.transitionTo(email, "received");
-      await this.transitionTo(email, "dedupe_checked");
+      await this.transitionTo(email, userContext, "received");
+      await this.transitionTo(email, userContext, "dedupe_checked");
 
       const classification = await this.deps.classifier.classify(email);
-      await this.transitionTo(email, "classified", {
+      await this.transitionTo(email, userContext, "classified", {
         label: classification.label,
         topic: classification.topic,
         confidence: classification.confidence,
       });
 
       if (classification.label === "not_relevant") {
-        await this.transitionTo(email, "skipped_irrelevant", {
+        await this.transitionTo(email, userContext, "skipped_irrelevant", {
           topic: classification.topic,
           confidence: classification.confidence,
         });
 
-        await this.deps.processedStore.markProcessed(email.id);
-        await this.transitionTo(email, "completed");
+        await this.deps.processedStore.markProcessed(email.id, userContext.workspaceId);
+        await this.transitionTo(email, userContext, "completed");
 
         return {
           emailId: email.id,
@@ -79,7 +79,7 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         classification,
         userContext,
       });
-      await this.transitionTo(email, "knowledge_retrieved", {
+      await this.transitionTo(email, userContext, "knowledge_retrieved", {
         chunkCount: knowledge.length,
       });
 
@@ -95,17 +95,17 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         knowledge,
         userContext,
       });
-      await this.transitionTo(email, "reply_generated");
+      await this.transitionTo(email, userContext, "reply_generated");
 
       const draft = await this.deps.inbox.createDraftReply({
         originalEmail: email,
         reply,
         userContext,
       });
-      await this.transitionTo(email, "draft_created", { draftId: draft.draftId });
+      await this.transitionTo(email, userContext, "draft_created", { draftId: draft.draftId });
 
-      await this.deps.processedStore.markProcessed(email.id);
-      await this.transitionTo(email, "completed");
+      await this.deps.processedStore.markProcessed(email.id, userContext.workspaceId);
+      await this.transitionTo(email, userContext, "completed");
 
       return {
         emailId: email.id,
@@ -114,7 +114,7 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         draft: reply,
       };
     } catch (error) {
-      await this.safeMarkFailed(email, this.toErrorMessage(error));
+      await this.safeMarkFailed(email, userContext, this.toErrorMessage(error));
 
       return {
         emailId: email.id,
@@ -126,14 +126,16 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
 
   private async transitionTo(
     email: EmailMessage,
+    userContext: UserContext,
     to: "received" | "dedupe_checked" | "skipped_duplicate" | "classified" | "skipped_irrelevant" | "knowledge_retrieved" | "reply_generated" | "draft_created" | "completed",
     metadata?: Record<string, unknown>,
   ): Promise<void> {
-    const snapshot = await this.deps.stateTracker.getSnapshot(email.id);
+    const snapshot = await this.deps.stateTracker.getSnapshot(email.id, userContext.workspaceId);
     const from = snapshot?.state ?? "none";
 
     await this.deps.stateTracker.transition({
       emailId: email.id,
+      workspaceId: userContext.workspaceId,
       from,
       to,
       provider: email.provider,
@@ -141,8 +143,8 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
     });
   }
 
-  private async safeMarkFailed(email: EmailMessage, reason: string): Promise<void> {
-    const snapshot = await this.deps.stateTracker.getSnapshot(email.id);
+  private async safeMarkFailed(email: EmailMessage, userContext: UserContext, reason: string): Promise<void> {
+    const snapshot = await this.deps.stateTracker.getSnapshot(email.id, userContext.workspaceId);
 
     if (snapshot?.state === "completed") {
       return;
@@ -151,13 +153,14 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
     if (!snapshot) {
       await this.deps.stateTracker.transition({
         emailId: email.id,
+        workspaceId: userContext.workspaceId,
         from: "none",
         to: "received",
         provider: email.provider,
       });
     }
 
-    await this.deps.stateTracker.markFailed(email.id, reason);
+    await this.deps.stateTracker.markFailed(email.id, userContext.workspaceId, reason);
   }
 
   private toErrorMessage(error: unknown): string {

@@ -61,15 +61,15 @@ export interface KnowledgeBaseIntegration {
 }
 
 export interface ProcessedEmailStore {
-  hasProcessed(emailId: string): Promise<boolean>;
-  markProcessed(emailId: string): Promise<void>;
+  hasProcessed(emailId: string, workspaceId: string): Promise<boolean>;
+  markProcessed(emailId: string, workspaceId: string): Promise<void>;
 }
 
 export interface EmailStateTracker {
-  getSnapshot(emailId: string): Promise<EmailProcessingSnapshot | null>;
-  getEvents(emailId: string): Promise<EmailProcessingEvent[]>;
+  getSnapshot(emailId: string, workspaceId: string): Promise<EmailProcessingSnapshot | null>;
+  getEvents(emailId: string, workspaceId: string): Promise<EmailProcessingEvent[]>;
   transition(request: TransitionRequest): Promise<EmailProcessingSnapshot>;
-  markFailed(emailId: string, error: string): Promise<EmailProcessingSnapshot>;
+  markFailed(emailId: string, workspaceId: string, error: string): Promise<EmailProcessingSnapshot>;
 }
 
 export interface EmailProcessingOrchestrator {
