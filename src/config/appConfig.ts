@@ -1,7 +1,8 @@
 export type AiProvider = "openrouter";
 
 export interface OpenRouterConfig {
-  apiKey: string;
+  classifierApiKey: string;
+  replyGeneratorApiKey: string;
   classifyModel: string;
   replyModel: string;
   baseUrl: string;
@@ -30,6 +31,17 @@ function readRequiredEnv(name: string): string {
   }
 
   return value;
+}
+
+function readRequiredEnvFrom(names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  throw new Error(`Missing required environment variable: ${names.join(" or ")}`);
 }
 
 function readOptionalEnv(name: string): string | undefined {
@@ -63,7 +75,14 @@ export function loadRuntimeConfig(): RuntimeConfig {
     port: readNumberEnv("PORT", 3000),
     aiProvider: "openrouter",
     openRouter: {
-      apiKey: readRequiredEnv("OPENROUTER_API_KEY"),
+      classifierApiKey: readRequiredEnvFrom([
+        "OPENROUTER_API_KEY_CLASSIFIER",
+        "OPENROUTER_API_KEY",
+      ]),
+      replyGeneratorApiKey: readRequiredEnvFrom([
+        "OPENROUTER_API_KEY_REPLY_GENERATOR",
+        "OPENROUTER_API_KEY",
+      ]),
       classifyModel: readRequiredEnv("OPENROUTER_CLASSIFY_MODEL"),
       replyModel: readRequiredEnv("OPENROUTER_REPLY_MODEL"),
       baseUrl: readOptionalEnv("OPENROUTER_BASE_URL") ?? "https://openrouter.ai/api/v1",

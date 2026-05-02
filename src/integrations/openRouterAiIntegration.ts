@@ -150,7 +150,7 @@ export class OpenRouterAiIntegration implements AiIntegration {
             ].join("\n"),
           },
         ],
-      });
+      }, this.config.classifierApiKey);
 
       const result: ClassificationResult = {
         label: payload.label,
@@ -232,7 +232,7 @@ export class OpenRouterAiIntegration implements AiIntegration {
             ].join("\n\n"),
           },
         ],
-      });
+      }, this.config.replyGeneratorApiKey);
 
       const reply: GeneratedReply = {
         subject: payload.subject,
@@ -245,11 +245,7 @@ export class OpenRouterAiIntegration implements AiIntegration {
         emailId: input.email.id,
         confidence: reply.confidence,
         subjectPreview: truncate(reply.subject, 80),
-        draft: {
-          subject: reply.subject,
-          bodyText: reply.bodyText,
-          confidence: reply.confidence,
-        },
+        bodyLength: reply.bodyText.length,
         durationMs: Date.now() - startedAt,
       });
 
@@ -265,8 +261,8 @@ export class OpenRouterAiIntegration implements AiIntegration {
     }
   }
 
-  private async sendStructuredRequest<T>(body: OpenRouterRequestBody): Promise<T> {
-    const response = await this.post(body);
+  private async sendStructuredRequest<T>(body: OpenRouterRequestBody, apiKey: string): Promise<T> {
+    const response = await this.post(body, apiKey);
     const content = response.choices?.[0]?.message?.content;
 
     if (!content) {
@@ -283,14 +279,14 @@ export class OpenRouterAiIntegration implements AiIntegration {
     }
   }
 
-  private async post(body: OpenRouterRequestBody): Promise<OpenRouterResponse> {
+  private async post(body: OpenRouterRequestBody, apiKey: string): Promise<OpenRouterResponse> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
     try {
       const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
         method: "POST",
-        headers: this.buildHeaders(),
+        headers: this.buildHeaders(apiKey),
         body: JSON.stringify(body),
         signal: controller.signal,
       });
@@ -313,9 +309,9 @@ export class OpenRouterAiIntegration implements AiIntegration {
     }
   }
 
-  private buildHeaders(): Record<string, string> {
+  private buildHeaders(apiKey: string): Record<string, string> {
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.config.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
 

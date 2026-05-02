@@ -3,11 +3,15 @@ import type { ProcessedEmailStore } from "../types";
 export class InMemoryProcessedEmailStore implements ProcessedEmailStore {
   private readonly processedEmailIds = new Set<string>();
 
-  async hasProcessed(emailId: string, _workspaceId: string): Promise<boolean> {
-    return this.processedEmailIds.has(emailId);
+  private toKey(emailId: string, workspaceId: string): string {
+    return `${workspaceId}:${emailId}`;
   }
 
-  async markProcessed(emailId: string, _workspaceId: string): Promise<void> {
-    this.processedEmailIds.add(emailId);
+  async hasProcessed(emailId: string, workspaceId: string): Promise<boolean> {
+    return this.processedEmailIds.has(this.toKey(emailId, workspaceId));
+  }
+
+  async markProcessed(emailId: string, workspaceId: string): Promise<void> {
+    this.processedEmailIds.add(this.toKey(emailId, workspaceId));
   }
 }

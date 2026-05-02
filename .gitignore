@@ -1,7 +1,11 @@
 node_modules
 .env
+.env.example
 .DS_Store
 npm-debug.log*
-.ProjectOverview.txt
+ProjectOverview.txt
 dist
 *.tsbuildinfo
+models-openrouter.txt
+TODO.MD
+ProjectOverview.txt

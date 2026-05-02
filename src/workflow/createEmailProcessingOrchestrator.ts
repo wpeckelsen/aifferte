@@ -2,7 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 import {
   MockInboxIntegration,
   OpenRouterAiIntegration,
-  OpenRouterReplyIntegration,
   SupabaseKnowledgeBaseIntegration,
 } from "../integrations";
 import type { RuntimeConfig } from "../config";
@@ -10,6 +9,7 @@ import { loadRuntimeConfig } from "../config";
 import {
   ClassifyService,
   KnowledgeService,
+  ReplyService,
 } from "../services";
 import {
   SupabaseEmailStateTracker,
@@ -34,12 +34,12 @@ export function createEmailProcessingOrchestrator(
   });
 
   const inbox = new MockInboxIntegration();
-  const classifierAi = new OpenRouterAiIntegration(openRouterConfig);
+  const ai = new OpenRouterAiIntegration(openRouterConfig);
   const knowledgeBase = new SupabaseKnowledgeBaseIntegration(supabase);
 
-  const classifier = new ClassifyService(classifierAi);
+  const classifier = new ClassifyService(ai);
   const knowledgeRetriever = new KnowledgeService(knowledgeBase);
-  const replyGenerator = new OpenRouterReplyIntegration(openRouterConfig);
+  const replyGenerator = new ReplyService(ai);
 
   const processedStore = new SupabaseProcessedEmailStore(supabase);
   const stateTracker = new SupabaseEmailStateTracker(supabase);

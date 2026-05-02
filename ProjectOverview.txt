@@ -13,6 +13,7 @@ High level flow
    → If NOT relevant → stop, if relevant > continue
 4. Retrieve knowledge base (Supabase)
 5. Generate reply (AI.generator)
+
 6. Save + create draft in inbox
 
 

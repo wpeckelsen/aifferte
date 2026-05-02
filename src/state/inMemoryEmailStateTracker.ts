@@ -24,17 +24,22 @@ export class InMemoryEmailStateTracker implements EmailStateTracker {
   private readonly snapshots = new Map<string, EmailProcessingSnapshot>();
   private readonly events = new Map<string, EmailProcessingEvent[]>();
 
-  async getSnapshot(emailId: string, _workspaceId: string): Promise<EmailProcessingSnapshot | null> {
-    const snapshot = this.snapshots.get(emailId);
+  private toKey(emailId: string, workspaceId: string): string {
+    return `${workspaceId}:${emailId}`;
+  }
+
+  async getSnapshot(emailId: string, workspaceId: string): Promise<EmailProcessingSnapshot | null> {
+    const snapshot = this.snapshots.get(this.toKey(emailId, workspaceId));
     return snapshot ? { ...snapshot } : null;
   }
 
-  async getEvents(emailId: string, _workspaceId: string): Promise<EmailProcessingEvent[]> {
-    return [...(this.events.get(emailId) ?? [])];
+  async getEvents(emailId: string, workspaceId: string): Promise<EmailProcessingEvent[]> {
+    return [...(this.events.get(this.toKey(emailId, workspaceId)) ?? [])];
   }
 
   async transition(request: TransitionRequest): Promise<EmailProcessingSnapshot> {
-    const existing = this.snapshots.get(request.emailId);
+    const key = this.toKey(request.emailId, request.workspaceId);
+    const existing = this.snapshots.get(key);
     const expectedFrom = existing?.state ?? "none";
 
     if (expectedFrom !== request.from) {
@@ -65,8 +70,8 @@ export class InMemoryEmailStateTracker implements EmailStateTracker {
       updatedAt: now,
     };
 
-    this.snapshots.set(request.emailId, snapshot);
-    this.addEvent({
+    this.snapshots.set(key, snapshot);
+    this.addEvent(key, {
       emailId: request.emailId,
       from: request.from,
       to: request.to,
@@ -78,7 +83,7 @@ export class InMemoryEmailStateTracker implements EmailStateTracker {
   }
 
   async markFailed(emailId: string, workspaceId: string, error: string): Promise<EmailProcessingSnapshot> {
-    const current = this.snapshots.get(emailId);
+    const current = this.snapshots.get(this.toKey(emailId, workspaceId));
     const from = current?.state ?? "none";
 
     return this.transition({
@@ -91,9 +96,9 @@ export class InMemoryEmailStateTracker implements EmailStateTracker {
     });
   }
 
-  private addEvent(event: EmailProcessingEvent): void {
-    const current = this.events.get(event.emailId) ?? [];
-    this.events.set(event.emailId, [...current, event]);
+  private addEvent(key: string, event: EmailProcessingEvent): void {
+    const current = this.events.get(key) ?? [];
+    this.events.set(key, [...current, event]);
   }
 
   private toErrorMessage(metadata?: Record<string, unknown>): string | undefined {

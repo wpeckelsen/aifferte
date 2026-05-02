@@ -83,12 +83,6 @@ export class DefaultEmailProcessingOrchestrator implements EmailProcessingOrches
         chunkCount: knowledge.length,
       });
 
-      if (knowledge.length === 0) {
-        throw new Error(
-          `Cannot generate reply for email ${email.id}: no knowledge chunks provided`,
-        );
-      }
-
       const reply = await this.deps.replyGenerator.generateReply({
         email,
         classification,
